@@ -1,0 +1,46 @@
+name: seal-build
+
+on:
+  workflow_dispatch:
+    inputs:
+      test-filter:
+        description: "Optional mocha --grep pattern; empty runs the full suite"
+        required: false
+        default: ""
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "12.18.3"
+      - name: Toolchain versions
+        run: |
+          node --version
+          npm --version
+          yarn --version
+      - name: Install
+        run: yarn install --frozen-lockfile
+      - name: Build
+        run: yarn build
+      - name: Test
+        env:
+          TEST_FILTER: ${{ inputs.test-filter }}
+        run: |
+          if [ -z "$TEST_FILTER" ]; then
+            yarn test --reporter spec
+          else
+            yarn test --reporter spec --grep "$TEST_FILTER"
+          fi
+      - name: Pack
+        run: |
+          npm pack --ignore-scripts
+          tar tzf uri-js-4.4.1.tgz
+      - uses: actions/upload-artifact@v4
+        with:
+          name: uri-js-4.4.1
+          path: uri-js-4.4.1.tgz
+          if-no-files-found: error
